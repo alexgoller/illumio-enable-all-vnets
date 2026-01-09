@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # =============================================================================
 # Enable VNet Flow Logs Across Multiple Azure Subscriptions
@@ -6,17 +6,41 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Usage: ./enable-vnet-flowlogs.sh [--dry-run]
-#        --dry-run    Show all commands without executing them
+# Usage: ./enable-vnet-flowlogs.sh [OPTIONS]
+#        --dry-run                Show all commands without executing them
+#        --current-subscription   Run only in the current subscription
 # -----------------------------------------------------------------------------
 
 DRY_RUN=false
-if [[ "$1" == "--dry-run" ]]; then
-  DRY_RUN=true
+CURRENT_SUBSCRIPTION_ONLY=false
+
+# Parse arguments
+for arg in "$@"; do
+  case $arg in
+    --dry-run)
+      DRY_RUN=true
+      ;;
+    --current-subscription)
+      CURRENT_SUBSCRIPTION_ONLY=true
+      ;;
+    *)
+      echo "Unknown option: $arg"
+      echo "Usage: $0 [--dry-run] [--current-subscription]"
+      exit 1
+      ;;
+  esac
+done
+
+if [ "$DRY_RUN" = true ]; then
   echo "╔═══════════════════════════════════════════════════════════════════════╗"
   echo "║                           DRY RUN MODE                                ║"
   echo "║         No changes will be made. Commands shown for review.          ║"
   echo "╚═══════════════════════════════════════════════════════════════════════╝"
+  echo ""
+fi
+
+if [ "$CURRENT_SUBSCRIPTION_ONLY" = true ]; then
+  echo "Running in current subscription only mode"
   echo ""
 fi
 
@@ -39,13 +63,22 @@ echo "Phase 1: Discovery"
 echo "══════════════════════════════════════════════════════════════════════════"
 echo ""
 
-if [ "$DRY_RUN" = true ]; then
-  echo "# Get all enabled subscriptions"
-  echo "az account list --query \"[?state=='Enabled'].id\" -o tsv"
-  echo ""
-fi
-
-if [ ${#SUBSCRIPTIONS[@]} -eq 0 ]; then
+if [ "$CURRENT_SUBSCRIPTION_ONLY" = true ]; then
+  # Use only the current subscription
+  if [ "$DRY_RUN" = true ]; then
+    echo "# Get current subscription"
+    echo "az account show --query \"id\" -o tsv"
+    echo ""
+  fi
+  CURRENT_SUB=$(az account show --query "id" -o tsv)
+  SUBSCRIPTIONS=("$CURRENT_SUB")
+elif [ ${#SUBSCRIPTIONS[@]} -eq 0 ]; then
+  # Get all enabled subscriptions
+  if [ "$DRY_RUN" = true ]; then
+    echo "# Get all enabled subscriptions"
+    echo "az account list --query \"[?state=='Enabled'].id\" -o tsv"
+    echo ""
+  fi
   SUBSCRIPTIONS=($(az account list --query "[?state=='Enabled'].id" -o tsv))
 fi
 
