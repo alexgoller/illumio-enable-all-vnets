@@ -8,7 +8,7 @@ This script streamlines the process of enabling Azure Network Watcher Flow Logs 
 
 ## Features
 
-- **Multi-subscription support**: Process all enabled subscriptions or specify a subset
+- **Multi-subscription support**: Process all enabled subscriptions, specify a subset, or target just the current subscription
 - **Automatic infrastructure creation**: Creates storage accounts, resource groups, and enables Network Watcher
 - **Regional awareness**: Handles VNets across multiple Azure regions
 - **Dry-run mode**: Preview all commands before execution
@@ -47,6 +47,18 @@ Enable flow logs across all enabled subscriptions:
 ./enable-all-vnet-flow-logs.sh
 ```
 
+### Current Subscription Only
+
+Run only in the currently active subscription:
+```bash
+./enable-all-vnet-flow-logs.sh --current-subscription
+```
+
+This is useful when:
+- You want to process a single subscription without affecting others
+- You've already set your desired subscription with `az account set`
+- You're testing the script on one subscription first
+
 ### Dry-Run Mode
 
 Preview all commands without making changes:
@@ -60,9 +72,20 @@ Dry-run mode will:
 - Provide copy-pasteable commands for manual execution
 - Generate a summary without making changes
 
+### Combined Options
+
+You can combine flags in any order:
+```bash
+# Dry-run for current subscription only
+./enable-all-vnet-flow-logs.sh --dry-run --current-subscription
+
+# Same as above, different order
+./enable-all-vnet-flow-logs.sh --current-subscription --dry-run
+```
+
 ### Specify Subscriptions
 
-Edit the script to target specific subscriptions:
+Alternatively, edit the script to target specific subscriptions:
 ```bash
 SUBSCRIPTIONS=(
   "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
@@ -70,7 +93,7 @@ SUBSCRIPTIONS=(
 )
 ```
 
-If left empty, the script processes all enabled subscriptions.
+If left empty and `--current-subscription` is not used, the script processes all enabled subscriptions.
 
 ## Configuration
 
@@ -85,7 +108,10 @@ STORAGE_NAME_PREFIX="flowlogs"          # Prefix for storage account names
 ## What It Does
 
 ### Phase 1: Discovery
-1. Lists all enabled subscriptions (or uses specified list)
+1. Determines which subscription(s) to process:
+   - With `--current-subscription`: Uses the currently active subscription
+   - With hardcoded list: Uses subscriptions defined in the script
+   - Otherwise: Lists all enabled subscriptions
 2. For each subscription:
    - Retrieves subscription name
    - Lists all VNets with their resource groups and locations
